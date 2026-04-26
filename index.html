@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タイマーアラーム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    padding: 20px;
+  }
+  .app {
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin-bottom: 24px;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+  }
+  .display {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 4rem;
+    text-align: center;
+    padding: 24px 0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .display .ms {
+    font-size: 2.2rem;
+    opacity: 0.7;
+  }
+  .alarm-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 12px 0 24px;
+    font-size: 0.95rem;
+  }
+  .alarm-row label { opacity: 0.85; }
+  .alarm-row input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    width: 90px;
+    text-align: center;
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+  .alarm-row input:focus { outline: 2px solid #6ea8ff; }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  button {
+    padding: 14px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    color: #fff;
+    transition: transform 0.08s ease, opacity 0.2s ease, background 0.2s ease;
+    letter-spacing: 0.05em;
+  }
+  button:active:not(:disabled) { transform: scale(0.96); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-start { background: #2ecc71; }
+  .btn-stop  { background: #e74c3c; }
+  .btn-lap   { background: #3498db; }
+  .btn-reset { background: #7f8c8d; }
+  .laps {
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    padding-top: 12px;
+  }
+  .laps:empty::after {
+    content: "ラップはまだありません";
+    display: block;
+    text-align: center;
+    opacity: 0.5;
+    padding: 8px 0;
+    font-size: 0.9rem;
+  }
+  .lap-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.95rem;
+  }
+  .lap-item .lap-no { opacity: 0.7; }
+  .alarm-banner {
+    display: none;
+    background: #e74c3c;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    animation: flash 0.6s infinite alternate;
+  }
+  .alarm-banner.show { display: block; }
+  @keyframes flash {
+    from { opacity: 1; }
+    to   { opacity: 0.55; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>⏱ タイマーアラーム</h1>
+
+    <div id="alarmBanner" class="alarm-banner">🔔 アラーム時刻に到達しました</div>
+
+    <div class="display">
+      <span id="main">00:00:00</span><span class="ms" id="ms">.00</span>
+    </div>
+
+    <div class="alarm-row">
+      <label for="alarmInput">アラーム (秒):</label>
+      <input id="alarmInput" type="number" min="0" step="1" placeholder="例: 60">
+    </div>
+
+    <div class="controls">
+      <button id="startStopBtn" class="btn-start">START</button>
+      <button id="lapBtn" class="btn-lap" disabled>LAP</button>
+      <button id="resetBtn" class="btn-reset" disabled>RESET</button>
+    </div>
+
+    <div id="laps" class="laps"></div>
+  </div>
+
+<script>
+(() => {
+  const mainEl = document.getElementById('main');
+  const msEl = document.getElementById('ms');
+  const startStopBtn = document.getElementById('startStopBtn');
+  const lapBtn = document.getElementById('lapBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const lapsEl = document.getElementById('laps');
+  const alarmInput = document.getElementById('alarmInput');
+  const alarmBanner = document.getElementById('alarmBanner');
+
+  let running = false;
+  let startTimestamp = 0;
+  let elapsed = 0;
+  let rafId = null;
+  let lapCount = 0;
+  let alarmTriggered = false;
+  let audioCtx = null;
+  let alarmInterval = null;
+
+  function fmt(ms) {
+    const totalCs = Math.floor(ms / 10);
+    const cs = totalCs % 100;
+    const totalSec = Math.floor(totalCs / 100);
+    const s = totalSec % 60;
+    const m = Math.floor(totalSec / 60) % 60;
+    const h = Math.floor(totalSec / 3600);
+    const pad = (n, w = 2) => String(n).padStart(w, '0');
+    return {
+      main: `${pad(h)}:${pad(m)}:${pad(s)}`,
+      ms: `.${pad(cs)}`,
+    };
+  }
+
+  function render() {
+    const now = running ? performance.now() : startTimestamp;
+    const total = elapsed + (running ? now - startTimestamp : 0);
+    const f = fmt(total);
+    mainEl.textContent = f.main;
+    msEl.textContent = f.ms;
+
+    const alarmSec = parseFloat(alarmInput.value);
+    if (!alarmTriggered && running && !isNaN(alarmSec) && alarmSec > 0 && total >= alarmSec * 1000) {
+      triggerAlarm();
+    }
+
+    if (running) rafId = requestAnimationFrame(render);
+  }
+
+  function start() {
+    running = true;
+    startTimestamp = performance.now();
+    startStopBtn.textContent = 'STOP';
+    startStopBtn.classList.replace('btn-start', 'btn-stop');
+    lapBtn.disabled = false;
+    resetBtn.disabled = false;
+    alarmInput.disabled = true;
+    rafId = requestAnimationFrame(render);
+  }
+
+  function stop() {
+    running = false;
+    elapsed += performance.now() - startTimestamp;
+    cancelAnimationFrame(rafId);
+    startStopBtn.textContent = 'START';
+    startStopBtn.classList.replace('btn-stop', 'btn-start');
+    lapBtn.disabled = true;
+    render();
+  }
+
+  function reset() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    elapsed = 0;
+    lapCount = 0;
+    lapsEl.innerHTML = '';
+    startStopBtn.textContent = 'START';
+    startStopBtn.classList.replace('btn-stop', 'btn-start');
+    lapBtn.disabled = true;
+    resetBtn.disabled = true;
+    alarmInput.disabled = false;
+    stopAlarm();
+    mainEl.textContent = '00:00:00';
+    msEl.textContent = '.00';
+  }
+
+  function lap() {
+    if (!running) return;
+    const total = elapsed + (performance.now() - startTimestamp);
+    const f = fmt(total);
+    lapCount++;
+    const item = document.createElement('div');
+    item.className = 'lap-item';
+    item.innerHTML = `<span class="lap-no">Lap ${lapCount}</span><span>${f.main}${f.ms}</span>`;
+    lapsEl.prepend(item);
+  }
+
+  function beep() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.4);
+    } catch (e) { /* ignore */ }
+  }
+
+  function triggerAlarm() {
+    alarmTriggered = true;
+    alarmBanner.classList.add('show');
+    beep();
+    alarmInterval = setInterval(beep, 600);
+  }
+
+  function stopAlarm() {
+    alarmTriggered = false;
+    alarmBanner.classList.remove('show');
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
+  startStopBtn.addEventListener('click', () => {
+    if (alarmTriggered) stopAlarm();
+    running ? stop() : start();
+  });
+  lapBtn.addEventListener('click', lap);
+  resetBtn.addEventListener('click', reset);
+})();
+</script>
+</body>
+</html>
