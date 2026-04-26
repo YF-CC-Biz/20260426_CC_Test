@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ランダムポケモン</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    background: linear-gradient(135deg, #ff5959 0%, #ffc371 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2c2c2c;
+    padding: 20px;
+  }
+  .app {
+    background: #fff;
+    border-radius: 24px;
+    padding: 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #c0392b;
+    letter-spacing: 0.05em;
+  }
+  .card {
+    background: linear-gradient(180deg, #f7f8fc 0%, #e9ecf5 100%);
+    border-radius: 20px;
+    padding: 24px 16px;
+    margin-bottom: 20px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ffe066;
+    position: relative;
+    overflow: hidden;
+  }
+  .pokemon-id {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.9rem;
+    color: #888;
+    font-weight: 600;
+  }
+  .pokemon-img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s ease;
+  }
+  .pokemon-img.loaded {
+    animation: pop 0.4s ease;
+  }
+  @keyframes pop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .pokemon-name {
+    margin-top: 12px;
+    font-size: 1.6rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    color: #2c3e50;
+  }
+  .pokemon-types {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .type-badge {
+    padding: 4px 12px;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0.03em;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  }
+  .stats {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: #555;
+    display: flex;
+    gap: 16px;
+  }
+  .stats span b { color: #2c3e50; }
+  .placeholder {
+    color: #999;
+    font-size: 1rem;
+  }
+  button {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    letter-spacing: 0.08em;
+    box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+    transition: transform 0.08s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  }
+  button:hover:not(:disabled) {
+    box-shadow: 0 8px 22px rgba(231, 76, 60, 0.55);
+  }
+  button:active:not(:disabled) { transform: scale(0.97); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #ffe066;
+    border-top-color: #c0392b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error {
+    color: #c0392b;
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+  /* Pokemon type colors */
+  .type-normal   { background: #A8A77A; }
+  .type-fire     { background: #EE8130; }
+  .type-water    { background: #6390F0; }
+  .type-electric { background: #F7D02C; color: #333; }
+  .type-grass    { background: #7AC74C; }
+  .type-ice      { background: #96D9D6; color: #333; }
+  .type-fighting { background: #C22E28; }
+  .type-poison   { background: #A33EA1; }
+  .type-ground   { background: #E2BF65; color: #333; }
+  .type-flying   { background: #A98FF3; }
+  .type-psychic  { background: #F95587; }
+  .type-bug      { background: #A6B91A; }
+  .type-rock     { background: #B6A136; }
+  .type-ghost    { background: #735797; }
+  .type-dragon   { background: #6F35FC; }
+  .type-dark     { background: #705746; }
+  .type-steel    { background: #B7B7CE; color: #333; }
+  .type-fairy    { background: #D685AD; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>🎲 ランダムポケモン</h1>
+
+    <div class="card" id="card">
+      <p class="placeholder">ボタンを押してポケモンを表示</p>
+    </div>
+
+    <button id="randomBtn">ランダムに表示</button>
+  </div>
+
+<script>
+(() => {
+  const card = document.getElementById('card');
+  const btn = document.getElementById('randomBtn');
+
+  // 1〜1025 (Gen 1-9 までのおおよその範囲)
+  const MAX_ID = 1025;
+
+  async function fetchRandomPokemon() {
+    const id = Math.floor(Math.random() * MAX_ID) + 1;
+    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function render(p) {
+    const sprite =
+      p.sprites?.other?.['official-artwork']?.front_default ||
+      p.sprites?.front_default ||
+      '';
+
+    const types = (p.types || [])
+      .map(t => `<span class="type-badge type-${t.type.name}">${t.type.name}</span>`)
+      .join('');
+
+    const heightM = (p.height / 10).toFixed(1);
+    const weightKg = (p.weight / 10).toFixed(1);
+
+    card.innerHTML = `
+      <span class="pokemon-id">#${String(p.id).padStart(4, '0')}</span>
+      <img class="pokemon-img" alt="${p.name}" src="${sprite}">
+      <div class="pokemon-name">${p.name}</div>
+      <div class="pokemon-types">${types}</div>
+      <div class="stats">
+        <span>身長 <b>${heightM} m</b></span>
+        <span>体重 <b>${weightKg} kg</b></span>
+      </div>
+    `;
+    const img = card.querySelector('.pokemon-img');
+    if (img) img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+  }
+
+  function showLoading() {
+    card.innerHTML = `<div class="spinner"></div>`;
+  }
+
+  function showError(msg) {
+    card.innerHTML = `<p class="error">取得に失敗しました: ${msg}</p>`;
+  }
+
+  async function handleClick() {
+    btn.disabled = true;
+    showLoading();
+    try {
+      const p = await fetchRandomPokemon();
+      render(p);
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', handleClick);
+})();
+</script>
+</body>
+</html>
