@@ -19,9 +19,9 @@
   .app {
     background: #fff;
     border-radius: 24px;
-    padding: 32px;
+    padding: 28px 24px;
     width: 100%;
-    max-width: 420px;
+    max-width: 460px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     text-align: center;
   }
@@ -36,7 +36,7 @@
     border-radius: 20px;
     padding: 24px 16px;
     margin-bottom: 20px;
-    min-height: 360px;
+    min-height: 380px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -72,10 +72,22 @@
   }
   .pokemon-name {
     margin-top: 12px;
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     font-weight: 700;
-    text-transform: capitalize;
     color: #2c3e50;
+  }
+  .pokemon-name-en {
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: capitalize;
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
+  .pokemon-genus {
+    margin-top: 4px;
+    font-size: 0.85rem;
+    color: #c0392b;
+    font-weight: 600;
   }
   .pokemon-types {
     margin-top: 10px;
@@ -85,27 +97,105 @@
     justify-content: center;
   }
   .type-badge {
-    padding: 4px 12px;
+    padding: 4px 14px;
     border-radius: 999px;
     color: #fff;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: capitalize;
-    letter-spacing: 0.03em;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   }
-  .stats {
-    margin-top: 14px;
+  .meta {
+    margin-top: 12px;
     font-size: 0.85rem;
     color: #555;
     display: flex;
     gap: 16px;
   }
-  .stats span b { color: #2c3e50; }
-  .placeholder {
-    color: #999;
-    font-size: 1rem;
+  .meta b { color: #2c3e50; }
+  .section {
+    width: 100%;
+    margin-top: 16px;
+    text-align: left;
+    padding: 0 8px;
   }
+  .section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #c0392b;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+  .flavor {
+    font-size: 0.85rem;
+    color: #444;
+    line-height: 1.5;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .ability-item {
+    font-size: 0.85rem;
+    color: #333;
+    padding: 4px 0;
+  }
+  .ability-name { font-weight: 700; color: #2c3e50; }
+  .ability-hidden {
+    display: inline-block;
+    font-size: 0.7rem;
+    background: #c0392b;
+    color: #fff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .ability-flavor {
+    font-size: 0.78rem;
+    color: #666;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .stats-table {
+    width: 100%;
+    font-size: 0.82rem;
+  }
+  .stat-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 36px;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+  }
+  .stat-label { color: #555; font-weight: 600; }
+  .stat-value {
+    text-align: right;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .stat-bar {
+    background: #e0e4ec;
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed #c0c4cc;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+  .placeholder { color: #999; font-size: 1rem; }
   button {
     width: 100%;
     padding: 16px;
@@ -134,11 +224,7 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .error {
-    color: #c0392b;
-    font-size: 0.9rem;
-    padding: 8px;
-  }
+  .error { color: #c0392b; font-size: 0.9rem; padding: 8px; }
   /* Pokemon type colors */
   .type-normal   { background: #A8A77A; }
   .type-fire     { background: #EE8130; }
@@ -176,37 +262,145 @@
   const card = document.getElementById('card');
   const btn = document.getElementById('randomBtn');
 
-  // 1〜1025 (Gen 1-9 までのおおよその範囲)
   const MAX_ID = 1025;
 
-  async function fetchRandomPokemon() {
-    const id = Math.floor(Math.random() * MAX_ID) + 1;
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const TYPE_JA = {
+    normal: 'ノーマル', fire: 'ほのお', water: 'みず', electric: 'でんき',
+    grass: 'くさ', ice: 'こおり', fighting: 'かくとう', poison: 'どく',
+    ground: 'じめん', flying: 'ひこう', psychic: 'エスパー', bug: 'むし',
+    rock: 'いわ', ghost: 'ゴースト', dragon: 'ドラゴン', dark: 'あく',
+    steel: 'はがね', fairy: 'フェアリー',
+  };
+
+  const STAT_JA = {
+    'hp': 'HP',
+    'attack': 'こうげき',
+    'defense': 'ぼうぎょ',
+    'special-attack': 'とくこう',
+    'special-defense': 'とくぼう',
+    'speed': 'すばやさ',
+  };
+
+  const STAT_COLORS = {
+    'hp': '#FF5959',
+    'attack': '#F5AC78',
+    'defense': '#FAE078',
+    'special-attack': '#9DB7F5',
+    'special-defense': '#A7DB8D',
+    'speed': '#FA92B2',
+  };
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} (${url})`);
     return res.json();
   }
 
-  function render(p) {
+  // 日本語名を names 配列から取得 (ja > ja-Hrkt の優先順)
+  function pickJa(names) {
+    if (!names) return null;
+    const ja = names.find(n => n.language?.name === 'ja');
+    if (ja) return ja.name;
+    const jaHrkt = names.find(n => n.language?.name === 'ja-Hrkt');
+    return jaHrkt ? jaHrkt.name : null;
+  }
+
+  function pickJaFlavor(entries) {
+    if (!entries) return null;
+    const ja = entries.find(e => e.language?.name === 'ja');
+    if (ja) return ja.flavor_text || ja.effect || ja.short_effect;
+    const jaHrkt = entries.find(e => e.language?.name === 'ja-Hrkt');
+    return jaHrkt ? (jaHrkt.flavor_text || jaHrkt.effect || jaHrkt.short_effect) : null;
+  }
+
+  async function fetchPokemonBundle() {
+    const id = Math.floor(Math.random() * MAX_ID) + 1;
+    const pokemon = await fetchJSON(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    const species = await fetchJSON(pokemon.species.url);
+
+    // 並列で types / abilities の詳細取得
+    const typeDetails = await Promise.all(
+      pokemon.types.map(t => fetchJSON(t.type.url).catch(() => null))
+    );
+    const abilityDetails = await Promise.all(
+      pokemon.abilities.map(a => fetchJSON(a.ability.url).catch(() => null))
+    );
+
+    return { pokemon, species, typeDetails, abilityDetails };
+  }
+
+  function renderTypes(pokemon, typeDetails) {
+    return pokemon.types.map((t, i) => {
+      const slug = t.type.name;
+      const ja = TYPE_JA[slug] || (typeDetails[i] && pickJa(typeDetails[i].names)) || slug;
+      return `<span class="type-badge type-${slug}">${ja}</span>`;
+    }).join('');
+  }
+
+  function renderAbilities(pokemon, abilityDetails) {
+    return pokemon.abilities.map((a, i) => {
+      const detail = abilityDetails[i];
+      const ja = detail ? (pickJa(detail.names) || a.ability.name) : a.ability.name;
+      const flavor = detail ? pickJaFlavor(detail.flavor_text_entries) : null;
+      const hidden = a.is_hidden ? '<span class="ability-hidden">隠れ特性</span>' : '';
+      const desc = flavor ? `<div class="ability-flavor">${flavor.replace(/\n/g, ' ')}</div>` : '';
+      return `<div class="ability-item">
+        <span class="ability-name">${ja}</span>${hidden}
+        ${desc}
+      </div>`;
+    }).join('');
+  }
+
+  function renderStats(pokemon) {
+    const order = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed'];
+    const map = {};
+    pokemon.stats.forEach(s => { map[s.stat.name] = s.base_stat; });
+    const total = order.reduce((sum, k) => sum + (map[k] || 0), 0);
+    const rows = order.map(k => {
+      const v = map[k] || 0;
+      const pct = Math.min(100, (v / 200) * 100);
+      const color = STAT_COLORS[k] || '#888';
+      return `<div class="stat-row">
+        <span class="stat-label">${STAT_JA[k]}</span>
+        <div class="stat-bar"><div class="stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <span class="stat-value">${v}</span>
+      </div>`;
+    }).join('');
+    return `<div class="stats-table">${rows}<div class="total-row"><span>合計</span><span>${total}</span></div></div>`;
+  }
+
+  function render({ pokemon, species, typeDetails, abilityDetails }) {
     const sprite =
-      p.sprites?.other?.['official-artwork']?.front_default ||
-      p.sprites?.front_default ||
-      '';
-
-    const types = (p.types || [])
-      .map(t => `<span class="type-badge type-${t.type.name}">${t.type.name}</span>`)
-      .join('');
-
-    const heightM = (p.height / 10).toFixed(1);
-    const weightKg = (p.weight / 10).toFixed(1);
+      pokemon.sprites?.other?.['official-artwork']?.front_default ||
+      pokemon.sprites?.front_default || '';
+    const nameJa = pickJa(species.names) || pokemon.name;
+    const genus = species.genera ? pickJa(species.genera) : null;
+    const flavor = pickJaFlavor(species.flavor_text_entries);
+    const heightM = (pokemon.height / 10).toFixed(1);
+    const weightKg = (pokemon.weight / 10).toFixed(1);
 
     card.innerHTML = `
-      <span class="pokemon-id">#${String(p.id).padStart(4, '0')}</span>
-      <img class="pokemon-img" alt="${p.name}" src="${sprite}">
-      <div class="pokemon-name">${p.name}</div>
-      <div class="pokemon-types">${types}</div>
-      <div class="stats">
-        <span>身長 <b>${heightM} m</b></span>
-        <span>体重 <b>${weightKg} kg</b></span>
+      <span class="pokemon-id">#${String(pokemon.id).padStart(4, '0')}</span>
+      <img class="pokemon-img" alt="${nameJa}" src="${sprite}">
+      <div class="pokemon-name">${nameJa}</div>
+      <div class="pokemon-name-en">${pokemon.name}</div>
+      ${genus ? `<div class="pokemon-genus">${genus}</div>` : ''}
+      <div class="pokemon-types">${renderTypes(pokemon, typeDetails)}</div>
+      <div class="meta">
+        <span>たかさ <b>${heightM} m</b></span>
+        <span>おもさ <b>${weightKg} kg</b></span>
+      </div>
+      ${flavor ? `<div class="section">
+        <div class="section-title">📖 ずかんせつめい</div>
+        <div class="flavor">${flavor.replace(/[\n\f]/g, ' ')}</div>
+      </div>` : ''}
+      <div class="section">
+        <div class="section-title">⚡ とくせい</div>
+        ${renderAbilities(pokemon, abilityDetails)}
+      </div>
+      <div class="section">
+        <div class="section-title">📊 しゅぞくち (種族値)</div>
+        ${renderStats(pokemon)}
       </div>
     `;
     const img = card.querySelector('.pokemon-img');
@@ -225,8 +419,8 @@
     btn.disabled = true;
     showLoading();
     try {
-      const p = await fetchRandomPokemon();
-      render(p);
+      const data = await fetchPokemonBundle();
+      render(data);
     } catch (e) {
       showError(e.message);
     } finally {
