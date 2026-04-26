@@ -25,18 +25,21 @@
 
 ## セットアップ
 
-### 1. アクセストークンの取得
+### 1. アクセストークンの取得と保管
 
 1. [freee Developers Community](https://developer.freee.co.jp) でアプリを登録
 2. OAuth2 で `hr` スコープを許可してアクセストークンを発行
-3. テスト用には `.env` に `FREEE_ACCESS_TOKEN` を設定
+3. **`.env` ファイルに保管します。**MCP クライアントの設定ファイル (`settings.json` 等) や `git` 管理対象には**絶対に直書きしない**でください。
 
 ```bash
 cp .env.example .env
-# FREEE_ACCESS_TOKEN= に貼り付け
+# エディタで .env を開き、FREEE_ACCESS_TOKEN= の右に貼り付け
+chmod 600 .env   # 推奨: 自分以外から読めないように
 ```
 
-> 短命トークンを利用する場合はリフレッシュ運用を別途用意してください。本サーバはトークンを環境変数からそのまま使います。
+`.env` は `.gitignore` 済みなのでコミットされません。サーバ起動時に自動で読み込まれ、`process.env` に既に値があればそちらを優先します (CI などでシークレットマネージャから注入する場合に上書きされません)。
+
+> 短命トークンを利用する場合はリフレッシュ運用を別途用意してください。本サーバはトークンを `.env` または環境変数からそのまま使います。
 
 ### 2. ビルド
 
@@ -47,7 +50,21 @@ npm run build
 
 ### 3. MCP クライアントへの登録
 
-Claude Code の場合 (`~/.claude/settings.json` または `.mcp.json`):
+Claude Code の場合 (`~/.claude/settings.json` または `.mcp.json`)。**`env` ブロックにトークンを書かず**、`cwd` でこのリポジトリを指して `.env` を読ませます:
+
+```json
+{
+  "mcpServers": {
+    "freee-hr": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "/absolute/path/to/this/repo"
+    }
+  }
+}
+```
+
+`.env` の場所をリポジトリ外に置きたい場合は `FREEE_HR_ENV_FILE` で明示できます (それ自体は機微情報ではないので設定ファイルに書いて構いません):
 
 ```json
 {
@@ -56,15 +73,14 @@ Claude Code の場合 (`~/.claude/settings.json` または `.mcp.json`):
       "command": "node",
       "args": ["/absolute/path/to/dist/index.js"],
       "env": {
-        "FREEE_ACCESS_TOKEN": "xxx",
-        "FREEE_COMPANY_ID": "1234567"
+        "FREEE_HR_ENV_FILE": "/home/me/.config/freee-hr/.env"
       }
     }
   }
 }
 ```
 
-Claude Desktop でも同じ JSON 形式で `claude_desktop_config.json` に追加できます。
+Claude Desktop の `claude_desktop_config.json` でも同じ形式です。シークレットを JSON に書かないこと、それだけ守れば OS のシークレットストアやパスワードマネージャと組み合わせる運用にも移行しやすくなります。
 
 ## 使い方の例
 

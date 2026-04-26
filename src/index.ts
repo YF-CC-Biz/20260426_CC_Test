@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -9,6 +11,8 @@ import {
 import { z, ZodTypeAny } from "zod";
 import { FreeeApiError, FreeeHrClient } from "./freee-client.js";
 
+loadDotenv();
+
 const accessToken = process.env.FREEE_ACCESS_TOKEN ?? "";
 const baseUrl = process.env.FREEE_HR_BASE_URL || undefined;
 const defaultCompanyId = process.env.FREEE_COMPANY_ID
@@ -17,9 +21,35 @@ const defaultCompanyId = process.env.FREEE_COMPANY_ID
 
 if (!accessToken) {
   console.error(
-    "[freee-hr-mcp] FREEE_ACCESS_TOKEN environment variable is required.",
+    "[freee-hr-mcp] FREEE_ACCESS_TOKEN is missing. Place it in a .env file (see .env.example) or export it in your shell. Do not hard-code tokens in MCP client config.",
   );
   process.exit(1);
+}
+
+function loadDotenv(): void {
+  const path = resolve(process.env.FREEE_HR_ENV_FILE ?? ".env");
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return;
+  }
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq < 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (!key || key in process.env) continue;
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
 }
 
 const client = new FreeeHrClient({ accessToken, baseUrl });
