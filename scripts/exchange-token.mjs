@@ -16,7 +16,10 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync, chmodSync } from "node:fs";
 import { resolve } from "node:path";
 
-const TOKEN_FILE = resolve(".env.token");
+const TOKEN_FILE_CANDIDATES = ["freee-credentials.txt", ".env.token"];
+const TOKEN_FILE =
+  TOKEN_FILE_CANDIDATES.map((p) => resolve(p)).find((p) => existsSync(p)) ??
+  resolve(TOKEN_FILE_CANDIDATES[0]);
 const ENV_FILE = resolve(".env");
 const TOKEN_URL = "https://accounts.secure.freee.co.jp/public_api/token";
 

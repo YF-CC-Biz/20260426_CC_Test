@@ -3,5 +3,6 @@ dist/
 .env
 .env.local
 .env.token
+freee-credentials.txt
 *.log
 .DS_Store
